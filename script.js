@@ -1,15 +1,16 @@
 const card = document.getElementById('card');
 const openButton = document.getElementById('openLetter');
 const musicButton = document.getElementById('musicToggle');
+const backgroundTrack = document.getElementById('backgroundTrack');
 
 openButton.addEventListener('click', () => {
   const isOpen = card.classList.toggle('is-open');
   openButton.textContent = isOpen ? 'Volver atrás' : 'Abrir carta';
 
   if (isOpen) {
-    startMusic();
+    startBackgroundMusic();
   } else {
-    stopMusic();
+    stopBackgroundMusic();
   }
 });
 
@@ -44,88 +45,39 @@ sparkleEls.forEach((sparkle, index) => {
   sparkle.style.animationDelay = `${index * 0.5}s`;
 });
 
-let audioContext = null;
-let melodyTimer = null;
 let isPlaying = false;
 
-const romanticProgression = [
-  [220.0, 277.18, 329.63],
-  [246.94, 293.66, 369.99],
-  [196.0, 246.94, 293.66],
-  [220.0, 277.18, 329.63],
-  [174.61, 220.0, 261.63],
-  [196.0, 246.94, 293.66],
-  [220.0, 277.18, 349.23],
-  [174.61, 220.0, 261.63]
-];
+function startBackgroundMusic() {
+  if (!backgroundTrack) return;
 
-function playChord(chord, startTime, duration, volume = 0.09) {
-  const filter = audioContext.createBiquadFilter();
-  const gainNode = audioContext.createGain();
+  backgroundTrack.volume = 0.75;
+  backgroundTrack.currentTime = 0;
+  backgroundTrack.load();
 
-  filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(2200, startTime);
-
-  gainNode.gain.setValueAtTime(0.0001, startTime);
-  gainNode.gain.exponentialRampToValueAtTime(volume, startTime + 0.12);
-  gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
-
-  chord.forEach((freq, index) => {
-    const oscillator = audioContext.createOscillator();
-    oscillator.type = 'triangle';
-    oscillator.frequency.setValueAtTime(freq, startTime + index * 0.04);
-    oscillator.connect(filter);
-    oscillator.start(startTime + index * 0.04);
-    oscillator.stop(startTime + duration + 0.08);
-  });
-
-  filter.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-}
-
-function startMusic() {
-  if (!audioContext) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const playPromise = backgroundTrack.play();
+  if (playPromise) {
+    playPromise.catch(() => {
+      // El navegador puede bloquear la reproducción hasta la interacción del usuario.
+    });
   }
 
-  if (audioContext.state === 'suspended') {
-    audioContext.resume();
-  }
-
-  if (melodyTimer) {
-    clearInterval(melodyTimer);
-  }
-
-  let step = 0;
-  melodyTimer = setInterval(() => {
-    const now = audioContext.currentTime;
-    const chord = romanticProgression[step % romanticProgression.length];
-    playChord(chord, now, 1.2, 0.08);
-    step += 1;
-  }, 1100);
-
-  musicButton.textContent = '🔇 Pausar música';
+  musicButton.textContent = '🔇 Pista';
   isPlaying = true;
 }
 
-function stopMusic() {
-  if (melodyTimer) {
-    clearInterval(melodyTimer);
-    melodyTimer = null;
-  }
+function stopBackgroundMusic() {
+  if (!backgroundTrack) return;
 
-  if (audioContext && audioContext.state !== 'closed') {
-    audioContext.suspend();
-  }
-
+  backgroundTrack.pause();
+  backgroundTrack.currentTime = 0;
   musicButton.textContent = '🎵 Música';
   isPlaying = false;
 }
 
 musicButton.addEventListener('click', () => {
   if (isPlaying) {
-    stopMusic();
+    stopBackgroundMusic();
   } else {
-    startMusic();
+    startBackgroundMusic();
   }
 });
